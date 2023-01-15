@@ -8,18 +8,22 @@
 
 /* Begin PBXBuildFile section */
 		9F58EDAC296F4A9000BEECBB /* DliProSwitchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F58EDAB296F4A9000BEECBB /* DliProSwitchApp.swift */; };
-		9F58EDAE296F4A9000BEECBB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F58EDAD296F4A9000BEECBB /* ContentView.swift */; };
+		9F58EDAE296F4A9000BEECBB /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F58EDAD296F4A9000BEECBB /* DashboardView.swift */; };
 		9F58EDB0296F4A9000BEECBB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9F58EDAF296F4A9000BEECBB /* Assets.xcassets */; };
 		9F58EDB3296F4A9000BEECBB /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9F58EDB2296F4A9000BEECBB /* Preview Assets.xcassets */; };
+		9F58EDC2296F5B5C00BEECBB /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F58EDC1296F5B5C00BEECBB /* SettingsView.swift */; };
+		9F58EDC5296FB72700BEECBB /* DataModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F58EDC3296FB72700BEECBB /* DataModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		9F58EDA8296F4A9000BEECBB /* DliProSwitch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DliProSwitch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9F58EDAB296F4A9000BEECBB /* DliProSwitchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DliProSwitchApp.swift; sourceTree = "<group>"; };
-		9F58EDAD296F4A9000BEECBB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		9F58EDAD296F4A9000BEECBB /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		9F58EDAF296F4A9000BEECBB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9F58EDB2296F4A9000BEECBB /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		9F58EDB4296F4A9000BEECBB /* DliProSwitch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DliProSwitch.entitlements; sourceTree = "<group>"; };
+		9F58EDC1296F5B5C00BEECBB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		9F58EDC3296FB72700BEECBB /* DataModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DataModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,11 +56,13 @@
 		9F58EDAA296F4A9000BEECBB /* DliProSwitch */ = {
 			isa = PBXGroup;
 			children = (
+				9F58EDC3296FB72700BEECBB /* DataModel.swift */,
 				9F58EDAB296F4A9000BEECBB /* DliProSwitchApp.swift */,
-				9F58EDAD296F4A9000BEECBB /* ContentView.swift */,
+				9F58EDAD296F4A9000BEECBB /* DashboardView.swift */,
 				9F58EDAF296F4A9000BEECBB /* Assets.xcassets */,
 				9F58EDB4296F4A9000BEECBB /* DliProSwitch.entitlements */,
 				9F58EDB1296F4A9000BEECBB /* Preview Content */,
+				9F58EDC1296F5B5C00BEECBB /* SettingsView.swift */,
 			);
 			path = DliProSwitch;
 			sourceTree = "<group>";
@@ -85,6 +91,8 @@
 			dependencies = (
 			);
 			name = DliProSwitch;
+			packageProductDependencies = (
+			);
 			productName = DliProSwitch;
 			productReference = 9F58EDA8296F4A9000BEECBB /* DliProSwitch.app */;
 			productType = "com.apple.product-type.application";
@@ -113,6 +121,8 @@
 				Base,
 			);
 			mainGroup = 9F58ED9F296F4A9000BEECBB;
+			packageReferences = (
+			);
 			productRefGroup = 9F58EDA9296F4A9000BEECBB /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -139,7 +149,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9F58EDAE296F4A9000BEECBB /* ContentView.swift in Sources */,
+				9F58EDC2296F5B5C00BEECBB /* SettingsView.swift in Sources */,
+				9F58EDC5296FB72700BEECBB /* DataModel.swift in Sources */,
+				9F58EDAE296F4A9000BEECBB /* DashboardView.swift in Sources */,
 				9F58EDAC296F4A9000BEECBB /* DliProSwitchApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -279,6 +291,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.k3tzr.DliProSwitch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -306,6 +319,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.k3tzr.DliProSwitch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
