@@ -25,14 +25,22 @@ struct DliProSwitchApp: App {
 
   var body: some Scene {
 
-    WindowGroup("Pro Switch  " + version + "." + build) {
+    WindowGroup("v" + version + "." + build) {
       DashboardView(model: model )
         .padding()
+        .toolbar {
+          ToolbarItemGroup {
+            Button("Settings") { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
+            Button("Refresh") { model.relaysRefresh() }
+          }
+        }
     }
+    .windowStyle(.hiddenTitleBar)
+
     .commands {
       CommandGroup(before: .singleWindowList) {
         Button("Refresh") {
-          model.refresh()
+          model.relaysRefresh()
         }.keyboardShortcut("r", modifiers: [.option, .command])
       }
     }
