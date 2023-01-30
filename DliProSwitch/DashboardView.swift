@@ -13,51 +13,47 @@ struct DashboardView: View {
   
   var body: some View {
     
+    let device = model.devices[model.selectedDevice]
+    
     VStack {
-      if model.deviceIndex == -1 || model.devices.count == 0 {
-        Text("No Device")
-        
-      } else {
-        Text(model.devices[model.deviceIndex].title).font(.title)
-        Divider().background(Color(.blue))
-        Spacer()
-        Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
-          
-          ForEach(Array(model.relays.enumerated()), id: \.offset) { offset, relay in
-            if model.devices[model.deviceIndex].showEmptyNames || !relay.name.isEmpty {
-              GridRow {
-                Text("\(offset+1). " + relay.name).font(.title2)
-                Image(systemName: relay.locked ? "lock.shield" : model.devices[model.deviceIndex].locks[offset] ? "lock" : "power")
-                  .font(.system(size: 28, weight: .bold))
-                  .foregroundColor(relay.status ? .green : .red)
-                  .onTapGesture {
-                    model.relayToggleState(offset)
-                  }.disabled( model.inProcess || relay.locked || model.devices[model.deviceIndex].locks[offset] )
-                
-                  .contextMenu {
-                    Button(model.devices[model.deviceIndex].locks[offset] ? "Unlock" : "Lock") { model.devices[model.deviceIndex].locks[offset].toggle() }
-                  }.disabled( model.inProcess || relay.locked )
-              }
+      Text(device.title).font(.title)
+      Divider().background(Color(.blue))
+      Spacer()
+      
+      Grid(verticalSpacing: 10) {
+        ForEach(model.relays, id: \.id) { relay in
+          if device.showEmptyNames || !relay.name.isEmpty {
+            GridRow {
+              Text("\(relay.number). " + relay.name).font(.title2).frame(width: 170, alignment: .leading)
+              Image(systemName: relay.isLocked ? "lock.slash.fill" : device.locks[relay.number - 1] ? "lock" : "power")
+                .font(.system(size: 28, weight: .bold))
+                .foregroundColor(relay.isOn ? .green : .red)
+                .onTapGesture {
+                  model.relayToggleState(relay.number - 1)
+                }.disabled( model.inProcess || relay.isLocked || device.locks[relay.number - 1] )
+              
+                .contextMenu {
+                  Button("Cycle") { model.relayCycle(relay.number - 1)}
+                  Button(device.locks[relay.number - 1] ? "Unlock" : "Lock") { model.deviceToggleLock(relay.number - 1) }
+                }.disabled( model.inProcess || relay.isLocked )
             }
           }
-          BottomButtonsView(model: model)
         }
+        BottomButtonsView(model: model)
       }
     }
     .frame(width: 275, height:450)
+    .padding(.horizontal)
+    .padding(.bottom)
     
     .onAppear {
-      if model.deviceIndex == -1 {
-        // No Device selected
+      if device.user.isEmpty || device.password.isEmpty || device.ipAddress.isEmpty {
         model.showSheet = true
-        
       } else {
-        // A Device is selected
         Task {
           do {
-            // try to get the Device and sync
-            model.deviceLoad()
-            try await model.relaysSynchronize()
+            // read the physical device
+            try await model.loadRelays()
           } catch {
             model.showSheet = true
           }
@@ -100,12 +96,15 @@ struct FailureView: View {
   
   var body: some View {
     
+    let device = model.devices[model.selectedDevice]
+
     VStack {
-      if model.deviceIndex == -1 {
-        Text("No Device Selected").font(.title).foregroundColor(.red)
+      if device.user.isEmpty || device.password.isEmpty || device.ipAddress.isEmpty {
+        Text("\(device.name)").font(.title).foregroundColor(.red)
         Divider().background(Color(.blue))
         Spacer()
-        Text("Select or Add a Device").font(.title2)
+        Text("One or more properties empty").font(.title2)
+        Text("Update the Device").font(.title2)
         Spacer()
 
       } else if model.thrownError != nil {
@@ -128,14 +127,14 @@ struct FailureView: View {
         Text("Check your device & settings").font(.title2)
 
       } else {
-        Text(model.devices[model.deviceIndex].name).font(.title)
+        Text(model.devices[model.selectedDevice].name).font(.title)
         Text("Unable to reach the Device").font(.title2).foregroundColor(.red)
         Divider().background(Color(.blue))
 //        Spacer()
         Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
           GridRow() {
             Text("at IP Address")
-            Text(model.devices[model.deviceIndex].ipAddress)
+            Text(model.devices[model.selectedDevice].ipAddress)
           }
         }.font(.title2)
         Divider().background(Color(.blue))

@@ -30,8 +30,13 @@ struct DliProSwitchApp: App {
         .padding()
         .toolbar {
           ToolbarItemGroup {
-            Button("Settings") { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
-            Button("Refresh") { model.relaysRefresh() }
+//            Button("Settings") { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
+//            Button("Refresh") { model.relaysRefresh() }
+            Picker("Device", selection: $model.selectedDevice) {
+              ForEach(Array(model.devices.enumerated()), id: \.offset) { offset, device in
+                Text(device.name ).tag(offset)
+              }
+            }.frame(width: 200)
           }
         }
     }

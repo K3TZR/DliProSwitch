@@ -18,38 +18,40 @@ enum ApiError: Error {
 public struct Relay: Codable, Equatable, Identifiable {
   
   public init(
-    name: String,
-    status: Bool = false,
-    locked: Bool = false
+    name: String = "",
+    isOn: Bool = false,
+    isLocked: Bool = false
   ) {
     self.name = name
-    self.status = status
-    self.locked = locked
+    self.isOn = isOn
+    self.isLocked = isLocked
   }
   public var id = UUID()
+  public var number = 1
   public var name: String
-  public var status: Bool
-  public var locked: Bool
+  public var isOn: Bool
+  public var isLocked: Bool
   
   public enum CodingKeys: String, CodingKey {
     case name
-    case status = "state"
-    case locked
+    case isOn = "state"
+    case isLocked = "locked"
   }
 }
 
 public struct CycleStep: Identifiable, Codable {
-  internal init(id: UUID = UUID(), index: Int, enable: Bool, value: Bool, delay: Int) {
-    self.id = id
-    self.index = index
-    self.enable = enable
+  internal init(step: Int, relayNumber: Int, active: Bool, value: Bool, delay: Int) {
+    self.step = step
+    self.relayNumber = relayNumber
+    self.active = active
     self.value = value
     self.delay = delay
   }
   
-  public var id: UUID
-  var index: Int
-  var enable: Bool
+  public var id: Int { step }
+  public var step: Int
+  var relayNumber: Int
+  var active: Bool
   var value: Bool
   var delay: Int
 }
@@ -62,7 +64,10 @@ public struct Device: Codable {
     user: String = "",
     password: String = "",
     ipAddress: String = "",
-    locks: [Bool] = Array(repeating: false, count: 8),
+    locks: [Bool] = defaultLocks,
+    cycleOnSteps: [CycleStep] = defaultCycleSteps,
+    cycleOffSteps: [CycleStep] = defaultCycleSteps,
+    cycleDelays: [Int] = defaultCycleDelays,
     showEmptyNames: Bool = true
   )
   {
@@ -72,6 +77,9 @@ public struct Device: Codable {
     self.password = password
     self.ipAddress = ipAddress
     self.locks = locks
+    self.cycleOnSteps = cycleOnSteps
+    self.cycleOffSteps = cycleOffSteps
+    self.cycleDelays = cycleDelays
     self.showEmptyNames = showEmptyNames
   }
   
@@ -82,106 +90,92 @@ public struct Device: Codable {
   var ipAddress: String
   var locks: [Bool]
   var showEmptyNames: Bool
-  var cycleOnList = [
-    CycleStep(index: 0, enable: false, value: false, delay: 2),
-    CycleStep(index: 1, enable: false, value: false, delay: 2),
-    CycleStep(index: 2, enable: false, value: false, delay: 2),
-    CycleStep(index: 3, enable: false, value: false, delay: 2),
-    CycleStep(index: 4, enable: false, value: false, delay: 2),
-    CycleStep(index: 5, enable: false, value: false, delay: 2),
-    CycleStep(index: 6, enable: false, value: false, delay: 2),
-    CycleStep(index: 7, enable: false, value: false, delay: 2),
-  ]
-  var cycleOffList = [
-    CycleStep(index: 0, enable: false, value: false, delay: 2),
-    CycleStep(index: 1, enable: false, value: false, delay: 2),
-    CycleStep(index: 2, enable: false, value: false, delay: 2),
-    CycleStep(index: 3, enable: false, value: false, delay: 2),
-    CycleStep(index: 4, enable: false, value: false, delay: 2),
-    CycleStep(index: 5, enable: false, value: false, delay: 2),
-    CycleStep(index: 6, enable: false, value: false, delay: 2),
-    CycleStep(index: 7, enable: false, value: false, delay: 2),
-  ]
+  var cycleOnSteps: [CycleStep]
+  var cycleOffSteps: [CycleStep]
+  var cycleDelays: [Int]
 }
 
 @MainActor
 class DataModel: ObservableObject {
-  @AppStorage("deviceIndex") var deviceIndex = -1
-  @Published var relays = defaultRelays
-  @Published var inProcess = false
-  @Published var devices: [Device] = []
+  @AppStorage("selectedDevice") var selectedDevice = 0
   
+  @Published var devices: [Device] = []
+  @Published var inProcess = false
+  @Published var relays = defaultRelays
   @Published var showSheet = false
+
+  var previousRelays = defaultRelays
   var thrownError: Error? = nil
-    
+  
+  // ----------------------------------------------------------------------------
+  // MARK: - Initialization
+  
+  init() {
+    deviceLoad()
+  }
+  
   // ----------------------------------------------------------------------------
   // MARK: - Device methods
-  
-  func deviceAdd(_ name: String, _ title: String, _ user: String, _ password: String, _ ipAddress: String) {
-    // add a Device
-    let device = Device(name: name, title: title, user: user, password: password, ipAddress: ipAddress)
-    devices.append(device)
-    // set the index to pont to it
-    deviceIndex = devices.count - 1
-    // resave all devices to user defaults
-    for (index, device) in devices.enumerated() {
-      setStruct("device\(index)", device)
-    }
-  }
-  
-  func deviceDelete() {
-    if deviceIndex == 0 {
-      // add the default (will be at index == 1)
-      deviceAdd("New", "", "", "", "")
-      // delete the one that was at index == 0
-      devices.remove(at: deviceIndex)
-    } else {
-      // decrement the index and remove (at the pre-decrement index value)
-      deviceIndex -= 1
-      devices.remove(at: deviceIndex + 1)
-    }
 
-    // make all of the saved devices empty (nil)
-    let nilDevice: Device? = nil
-    for index in 0...7 {
-      setStruct("device\(index)", nilDevice)
-    }
-    // save all  current devices to user defaults
-    for (index, device) in devices.enumerated() {
-      setStruct("device\(index)", device)
-    }
+  func deviceToggleLock(_ index: Int) {
+    devices[selectedDevice].locks[index].toggle()
+    deviceSave()
   }
+  
+  // ----------------------------------------------------------------------------
+  // MARK: - Devices methods
 
   func deviceLoad() {
-    // max of 8 devices
-//    deviceIndex = 0
-    if let device:Device = getStruct("device0") { devices.append(device) }
-    if let device:Device = getStruct("device1") { devices.append(device) }
-    if let device:Device = getStruct("device2") { devices.append(device) }
-    if let device:Device = getStruct("device3") { devices.append(device) }
-    if let device:Device = getStruct("device4") { devices.append(device) }
-    if let device:Device = getStruct("device5") { devices.append(device) }
-    if let device:Device = getStruct("device6") { devices.append(device) }
-    if let device:Device = getStruct("device7") { devices.append(device) }
+    // 8 devices
+    if !devicesLoadSaved() {
+      devicesLoadDefaults()
+    }
+    relaysLoadDefaults()
+  }
+  
+  func devicesLoadSaved() -> Bool {
+    for i in 0...7 {
+      if let device:Device = getStruct("device\(i)") { devices.append(device) } else { return false }
+    }
+    print("Saved Devices loaded")
     
-    // make sure there is always at least one device
-    if devices.count == 0 { deviceAdd("New", "", "", "", "")}
+    return true
+  }
+  
+  func devicesLoadDefaults() {
+    for i in 0...7 {
+      let device = Device(name: "Device\(i)", title: "Title\(i)")
+      devices.append(device)
+      setStruct("device\(i)", devices[i])
+    }
+    selectedDevice = 0
+    
+    print("Default Devices loaded & saved")
+  }
+  
+  func cyclesLoadDefaults(_ device: inout Device) {
+    device.cycleOnSteps = defaultCycleSteps
+    device.cycleOffSteps = defaultCycleSteps
+    
+    print("Default Cycles loaded in Device \(device.name)")
   }
 
   func deviceSave() {
     // save the device to user defaults
-    setStruct("device\(deviceIndex)", devices[deviceIndex])
+    setStruct("device\(selectedDevice)", devices[selectedDevice])
     
     // make an array of the relay names
-    var newNames = [String]()
-    for relay in relays {
-      newNames.append(relay.name)
+    var newRelayNames = [(Int,String)]()
+    for (i, relay) in relays.enumerated() {
+      if relay.name != previousRelays[i].name {
+        newRelayNames.append( (i,relay.name) )
+      }
     }
-    let ipAddress = devices[deviceIndex].ipAddress
+    let ipAddress = devices[selectedDevice].ipAddress
     Task {
       // update the relay names from the array of names
-      for index in 0...7 {
-        await setRemoteProperty(ipAddress, .name, at: index, to: newNames[index])
+      for entry in newRelayNames {
+        await setRemoteProperty(ipAddress, .name, at: entry.0, to: entry.1)
         // ??? seems to have problems if we go too fast
         try! await Task.sleep(for: .milliseconds(50))
       }
@@ -191,14 +185,39 @@ class DataModel: ObservableObject {
   // ----------------------------------------------------------------------------
   // MARK: - Relay methods
   
+  func relayCycle(_ index: Int) {
+    let initialState = relays[index].isOn
+    
+    // prevent re-entrancy
+    guard !inProcess else { return }
+    guard !relays[index].isLocked else { return }
+    
+    let device = devices[selectedDevice]
+    let ipAddress = device.ipAddress
+    let cycleDelay = device.cycleDelays[index]
+    
+    Task {
+      setInProcess(true)
+      await setRemoteProperty(ipAddress, .isOn, at: index, to: initialState ? "false" : "true")
+      relays[index].isOn = !initialState
+      try await Task.sleep(for: .seconds(cycleDelay))
+      
+      await setRemoteProperty(ipAddress, .isOn, at: index, to: initialState ? "true" : "false")
+      relays[index].isOn = initialState
+//      try await Task.sleep(for: .seconds(cycleDelay))
+      setInProcess(false)
+    }
+  }
+  
+  
   func relaySetName(_ name: String, _ index: Int) {
     // prevent re-entrancy
     guard !inProcess else { return }
     inProcess = true
     defer { inProcess = false }
     
-    let ipAddress = devices[deviceIndex].ipAddress
-    if !relays[index].locked {
+    let ipAddress = devices[selectedDevice].ipAddress
+    if !relays[index].isLocked {
       Task {
         await setRemoteProperty(ipAddress, .name, at: index, to: name)
       }
@@ -212,13 +231,13 @@ class DataModel: ObservableObject {
     guard index >= 0 && index < relays.count else { return }
     
     // tell the box to change the relay's state
-    let newValue = relays[index].status ? "false" : "true"
-    let ipAddress = devices[deviceIndex].ipAddress
+    let newValue = relays[index].isOn ? "false" : "true"
+    let ipAddress = devices[selectedDevice].ipAddress
     Task {
-      await setRemoteProperty(ipAddress, .status, at: index, to: newValue)
+      await setRemoteProperty(ipAddress, .isOn, at: index, to: newValue)
     }
     // change it locally
-    relays[index].status.toggle()
+    relays[index].isOn.toggle()
   }
   
   // ----------------------------------------------------------------------------
@@ -230,12 +249,12 @@ class DataModel: ObservableObject {
     inProcess = true
     defer { inProcess = false }
 
-    let ipAddress = devices[deviceIndex].ipAddress
+    let ipAddress = devices[selectedDevice].ipAddress
     Task {
-      await setRemoteProperty(ipAddress, .status, at: -1, to: value ? "true" : "false")
+      await setRemoteProperty(ipAddress, .isOn, at: -1, to: value ? "true" : "false")
     }
     for i in 0...7 {
-      if !relays[i].locked { relays[i].status = value }
+      if !relays[i].isLocked { relays[i].isOn = value }
     }
   }
   
@@ -243,22 +262,22 @@ class DataModel: ObservableObject {
     // prevent re-entrancy
     guard !inProcess else { return }
     
-    let ipAddress = devices[deviceIndex].ipAddress
+    let ipAddress = devices[selectedDevice].ipAddress
     Task {
       setInProcess(true)
       if on {
-        for entry in devices[deviceIndex].cycleOnList {
-          if entry.enable && !relays[entry.index - 1].locked {
-            await setRemoteProperty(ipAddress, .status, at: entry.index - 1, to: entry.value ? "true" : "false")
-            relays[entry.index - 1].status = entry.value
+        for entry in devices[selectedDevice].cycleOnSteps {
+          if entry.active && !relays[entry.relayNumber - 1].isLocked {
+            await setRemoteProperty(ipAddress, .isOn, at: entry.relayNumber - 1, to: entry.value ? "true" : "false")
+            relays[entry.relayNumber - 1].isOn = entry.value
             try await Task.sleep(for: .seconds(entry.delay))
           }
         }
       } else {
-        for entry in devices[deviceIndex].cycleOffList {
-          if entry.enable && !relays[entry.index - 1].locked {
-            await setRemoteProperty(ipAddress, .status, at: entry.index - 1, to: entry.value ? "true" : "false")
-            relays[entry.index - 1].status = entry.value
+        for entry in devices[selectedDevice].cycleOffSteps {
+          if entry.active && !relays[entry.relayNumber - 1].isLocked {
+            await setRemoteProperty(ipAddress, .isOn, at: entry.relayNumber - 1, to: entry.value ? "true" : "false")
+            relays[entry.relayNumber - 1].isOn = entry.value
             try await Task.sleep(for: .seconds(entry.delay))
           }
         }
@@ -267,31 +286,48 @@ class DataModel: ObservableObject {
     }
   }
 
+  func relaysLoadDefaults() {
+    relays = defaultRelays
+    // fixup relay numbers
+    for i in 0...7 {
+      relays[i].number = i + 1
+    }
+    
+    print("Default Relays loaded & re-numbered")
+  }
+  
   func relaysRefresh() {
     Task {
       do {
-        try await relaysSynchronize()
+        try await loadRelays()
       } catch {
         showSheet = true
       }
     }
   }
   
-  func relaysSynchronize() async throws {
+  func loadRelays() async throws {
     // prevent re-entrancy
     guard !inProcess else { return }
     inProcess = true
     defer { inProcess = false }
     
     // get device characteristics
-    let user = devices[deviceIndex].user
-    let password = devices[deviceIndex].password
+    let user = devices[selectedDevice].user
+    let password = devices[selectedDevice].password
     
     // interrogate the device
     do {
-      relays = try JSONDecoder().decode( [Relay].self, from: (await getRequest(url: URL(string: "https://\(devices[deviceIndex].ipAddress)/restapi/relay/outlets/")!,
+      relays = try JSONDecoder().decode( [Relay].self, from: (await getRequest(url: URL(string: "https://\(devices[selectedDevice].ipAddress)/restapi/relay/outlets/")!,
                                                                                user: user,
                                                                                password: password)))
+      
+      // init the relay numbers
+      for i in 0...7 {
+        relays[i].number = i+1
+      }
+      previousRelays = relays
+
     } catch {
       thrownError = error as? ApiError
       showSheet = true
@@ -315,8 +351,8 @@ class DataModel: ObservableObject {
     } else {
       return
     }
-    let user = devices[deviceIndex].user
-    let password = devices[deviceIndex].password
+    let user = devices[selectedDevice].user
+    let password = devices[selectedDevice].password
     let url = URL(string: "https://\(ipaddress)/restapi/relay/outlets/\(indexString)/\(property.rawValue)/")!
     do {
       try await putRequest(Data(value.utf8), url: url, user: user, password: password)
@@ -397,15 +433,30 @@ extension URLRequest {
 // MARK: - Default Relays
 
 let defaultRelays = [
-  Relay(name: "Relay 1", status: false, locked: false),
-  Relay(name: "Relay 2", status: false, locked: false),
-  Relay(name: "Relay 3", status: false, locked: false),
-  Relay(name: "Relay 4", status: false, locked: false),
-  Relay(name: "Relay 5", status: false, locked: false),
-  Relay(name: "Relay 6", status: false, locked: false),
-  Relay(name: "Relay 7", status: false, locked: false),
-  Relay(name: "Relay 8", status: false, locked: false),
+  Relay(name: "Relay 1", isOn: false, isLocked: false),
+  Relay(name: "Relay 2", isOn: false, isLocked: false),
+  Relay(name: "Relay 3", isOn: false, isLocked: false),
+  Relay(name: "Relay 4", isOn: false, isLocked: false),
+  Relay(name: "Relay 5", isOn: false, isLocked: false),
+  Relay(name: "Relay 6", isOn: false, isLocked: false),
+  Relay(name: "Relay 7", isOn: false, isLocked: false),
+  Relay(name: "Relay 8", isOn: false, isLocked: false),
 ]
+
+let defaultLocks = [Bool](repeating: false, count: 8)
+
+let defaultCycleSteps = [
+  CycleStep(step: 1, relayNumber: 1, active: false, value: false, delay: 2),
+  CycleStep(step: 2, relayNumber: 2, active: false, value: false, delay: 2),
+  CycleStep(step: 3, relayNumber: 3, active: false, value: false, delay: 2),
+  CycleStep(step: 4, relayNumber: 4, active: false, value: false, delay: 2),
+  CycleStep(step: 5, relayNumber: 5, active: false, value: false, delay: 2),
+  CycleStep(step: 6, relayNumber: 6, active: false, value: false, delay: 2),
+  CycleStep(step: 7, relayNumber: 7, active: false, value: false, delay: 2),
+  CycleStep(step: 8, relayNumber: 8, active: false, value: false, delay: 2),
+]
+
+let defaultCycleDelays = [Int](repeating: 3, count: 8)
 
 // ----------------------------------------------------------------------------
 // MARK: - User defaults for structs
