@@ -25,13 +25,12 @@ struct DliProSwitchApp: App {
 
   var body: some Scene {
 
-    WindowGroup("v" + version + "." + build) {
-      DashboardView(model: model )
+    WindowGroup {
+      DashboardView(model: model)
         .padding()
         .toolbar {
           ToolbarItemGroup {
-//            Button("Settings") { NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil) }
-//            Button("Refresh") { model.relaysRefresh() }
+            Text("v" + version + "." + build)
             Picker("Device", selection: $model.selectedDevice) {
               ForEach(Array(model.devices.enumerated()), id: \.offset) { offset, device in
                 Text(device.name ).tag(offset)

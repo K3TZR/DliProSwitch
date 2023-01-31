@@ -10,6 +10,8 @@ import SwiftUI
 
 struct DashboardView: View {
   @ObservedObject var model: DataModel
+
+  @State var showLockPopover = false
   
   var body: some View {
     
@@ -33,9 +35,13 @@ struct DashboardView: View {
                 }.disabled( model.inProcess || relay.isLocked || device.locks[relay.number - 1] )
               
                 .contextMenu {
-                  Button("Cycle") { model.relayCycle(relay.number - 1)}
-                  Button(device.locks[relay.number - 1] ? "Unlock" : "Lock") { model.deviceToggleLock(relay.number - 1) }
-                }.disabled( model.inProcess || relay.isLocked )
+                  Group {
+                    Button("Cycle") { model.relayCycle(relay.number - 1)}
+                    Button(device.locks[relay.number - 1] ? "Enable" : "Disable") { model.deviceToggleLock(relay.number - 1) }
+                  }.disabled(relay.isLocked)
+                  Button(relay.isLocked ? "Unlock" : "Lock") { showLockPopover = true }
+                    .disabled(!relay.isLocked)
+                }.disabled( model.inProcess)
             }
           }
         }
@@ -61,8 +67,29 @@ struct DashboardView: View {
       }
     }
     
+    .onDisappear {
+      print("onDisappear")
+      for window in NSApp.windows where window.identifier?.rawValue == "com_apple_SwiftUI_Settings_window" {
+        window.close()
+      }
+    }
+    
     .sheet(isPresented: $model.showSheet) {
       FailureView(model: model)
+    }
+    
+    .popover(isPresented: $showLockPopover, arrowEdge: .trailing) {
+      Text(
+"""
+A Locked Relay can only
+be unlocked using the
+Device's front panel
+
+Use Disable / Enable
+instead
+"""
+      ).font(.title)
+        .padding()
     }
   }
 }
@@ -130,7 +157,6 @@ struct FailureView: View {
         Text(model.devices[model.selectedDevice].name).font(.title)
         Text("Unable to reach the Device").font(.title2).foregroundColor(.red)
         Divider().background(Color(.blue))
-//        Spacer()
         Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 10) {
           GridRow() {
             Text("at IP Address")

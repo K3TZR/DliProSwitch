@@ -97,7 +97,7 @@ public struct Device: Codable {
 
 @MainActor
 class DataModel: ObservableObject {
-  @AppStorage("selectedDevice") var selectedDevice = 0
+  @AppStorage("selectedDevice") var selectedDevice = 0 { didSet { relaysRefresh() }}
   
   @Published var devices: [Device] = []
   @Published var inProcess = false
@@ -137,8 +137,7 @@ class DataModel: ObservableObject {
     for i in 0...7 {
       if let device:Device = getStruct("device\(i)") { devices.append(device) } else { return false }
     }
-    print("Saved Devices loaded")
-    
+//    print("Saved Devices loaded")    
     return true
   }
   
@@ -149,15 +148,13 @@ class DataModel: ObservableObject {
       setStruct("device\(i)", devices[i])
     }
     selectedDevice = 0
-    
-    print("Default Devices loaded & saved")
+//    print("Default Devices loaded & saved")
   }
   
   func cyclesLoadDefaults(_ device: inout Device) {
     device.cycleOnSteps = defaultCycleSteps
     device.cycleOffSteps = defaultCycleSteps
-    
-    print("Default Cycles loaded in Device \(device.name)")
+//    print("Default Cycles loaded in Device \(device.name)")
   }
 
   func deviceSave() {
@@ -204,7 +201,6 @@ class DataModel: ObservableObject {
       
       await setRemoteProperty(ipAddress, .isOn, at: index, to: initialState ? "true" : "false")
       relays[index].isOn = initialState
-//      try await Task.sleep(for: .seconds(cycleDelay))
       setInProcess(false)
     }
   }
@@ -292,8 +288,7 @@ class DataModel: ObservableObject {
     for i in 0...7 {
       relays[i].number = i + 1
     }
-    
-    print("Default Relays loaded & re-numbered")
+//    print("Default Relays loaded & re-numbered")
   }
   
   func relaysRefresh() {
